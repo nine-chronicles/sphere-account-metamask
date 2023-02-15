@@ -1,13 +1,14 @@
-import { Buffer } from "https://deno.land/std@0.176.0/node/buffer.ts";
+import { Buffer } from "https://esm.sh/buffer@6.0.3";
 import { ActivateAccount, Address } from "https://raw.githubusercontent.com/nine-chronicles/lib9c.js/8bd16bd023d6c4007bd30a714bdabb6da839dbea/mod.ts";
 import { createAccount } from "https://raw.githubusercontent.com/nine-chronicles/sphere-account-metamask/main/mod.ts";
 import { signTransaction } from "https://esm.sh/@planetarium/sign@0.0.12";
 import { BencodexValue, decode } from "https://esm.sh/bencodex@0.1.2";
 import * as hex from "https://deno.land/std@0.173.0/encoding/hex.ts";
 import {sign} from "https://esm.sh/@noble/secp256k1@1.7.1";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 async function getRawState(address: string): Promise<BencodexValue> {
+  console.log("Test");
   const NC_HEADLESS_GRAPHQL_ENDPOINT = "https://9c-main-full-state.planetarium.dev/graphql";
   if (NC_HEADLESS_GRAPHQL_ENDPOINT === undefined) {
     throw new Error("NC_HEADLESS_GRAPHQL_ENDPOINT is not set.");
@@ -34,7 +35,8 @@ async function getRawState(address: string): Promise<BencodexValue> {
     throw new Error("The state seems not existed.");
   }
 
-  const result = decode(Buffer.from(hex.decode(new TextEncoder().encode(responseJson.data.state))));
+  // deno-lint-ignore no-explicit-any
+  const result = decode(Buffer.from(hex.decode(new TextEncoder().encode(responseJson.data.state))) as any);
   if (result === undefined) {
     throw new Error("Failed to decode state.");
   }
@@ -46,6 +48,7 @@ async function makeActivateAccount(activateCode: string): Promise<ActivateAccoun
   const [privateKey, pendingAddress] = activateCode.split("/");
   const pendingActivationState = await getRawState("0x" + pendingAddress);
 
+  console.log(pendingActivationState);
   if (!(pendingActivationState instanceof Map)) {
     throw new Error("The state must be Map type.");
   }
@@ -72,6 +75,8 @@ async function makeActivateAccount(activateCode: string): Promise<ActivateAccoun
 
 export default function Index() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [signedTx, setSignedTx] = useState<null | ActivateAccount>(null);
+
   return (
     <div
       className="w-screen flex flex-col items-center justify-center"
@@ -81,7 +86,13 @@ export default function Index() {
     >
       Activate account with MetaMask.
       <input ref={inputRef} className="m-8 p-4 w-150 h-15 border" placeholder="Insert activation code." />
-      <button className="border w-50 h-10" onClick={(event) => { console.log(inputRef); makeActivateAccount(inputRef.current!.value); event.preventDefault(); }}>Sign</button>
+      <button className="border w-50 h-10" onClick={(event) => { console.log(inputRef); makeActivateAccount(inputRef.current!.value).then(setSignedTx); event.preventDefault(); }}>Sign</button>
+
+      {
+        signedTx === null
+          ? <p>Before signing...</p>
+          : <p>{Buffer.from(signedTx.serialize()).toString("hex")}</p>
+      }
     </div>
   );
 }

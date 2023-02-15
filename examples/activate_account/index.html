@@ -9,6 +9,10 @@
 
 <body>
   <div id="root" data-ssr-root></div>
+  <script type="module">
+    import { Buffer } from 'https://esm.sh/buffer@6.0.3';
+    window.Buffer = Buffer;
+  </script>
   <script type="module" src="./main.tsx"></script>
 </body>
 
