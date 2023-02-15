@@ -20,13 +20,15 @@ export function createAccount(address: string): Account {
     VERSION: 0,
     async getPublicKey(isCompressed?: boolean) {
       await window.ethereum.enable();
-      const msg = "aa" as const;
+
+      // Original message is "Signing request to derive public key from signature".
+      const msg = "5369676e696e67207265717565737420746f20646572697665207075626c6963206b65792066726f6d207369676e6174757265" as const;
       const sig = await window.ethereum.request({
         method: "personal_sign",
         params: [msg, address],
       });
 
-      const hash = ethers.utils.hashMessage([0xaa]);
+      const hash = ethers.utils.hashMessage(hex.decode(new TextEncoder().encode(msg)));
       const publicKey = ethers.utils.computePublicKey(
         ethers.utils.recoverPublicKey(hash, sig),
         isCompressed || false,
