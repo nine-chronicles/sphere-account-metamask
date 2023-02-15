@@ -1,6 +1,7 @@
 import type { Account } from "https://esm.sh/@planetarium/sign@0.0.11";
 import * as ethers from "https://esm.sh/ethers@5.7.2";
 import * as hex from "https://deno.land/std@0.173.0/encoding/hex.ts";
+import { Signature } from "https://esm.sh/@noble/secp256k1@1.7.1";
 
 declare global {
   interface Window {
@@ -39,7 +40,7 @@ export function createAccount(address: string): Account {
         params: [address, "0x" + new TextDecoder().decode(hex.encode(hash))],
       });
 
-      return hex.decode(new TextEncoder().encode(sig.substring(2)));
+      return Signature.fromCompact(sig.substring(2, 130)).normalizeS().toDERRawBytes();
     },
   };
 }
