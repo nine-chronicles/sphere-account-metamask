@@ -15,10 +15,22 @@ declare global {
   }
 }
 
+const LOCAL_STORAGE_KEY_PREFIX = "SPHERE_ACCOUNT_METAMASK_PUBLIC_KEY_FOR_" as const;
+
 export function createAccount(address: string): Account {
+  const LOCAL_STORAGE_KEY = LOCAL_STORAGE_KEY_PREFIX + address.toLowerCase();
   return {
     VERSION: 0,
     async getPublicKey(isCompressed?: boolean) {
+      const cachedPublicKey = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (cachedPublicKey !== null) {
+        const publicKey = hex.decode(new TextEncoder().encode(cachedPublicKey));
+        const derivedAddress = ethers.utils.keccak256(publicKey.slice(1)).slice(-40).toLowerCase();
+        if (address.substring(2).toLowerCase() === derivedAddress.toLowerCase()) {
+          return publicKey;
+        }
+      }
+
       await window.ethereum.enable();
 
       // Original message is "Signing request to derive public key from signature".
@@ -29,11 +41,19 @@ export function createAccount(address: string): Account {
       });
 
       const hash = ethers.utils.hashMessage(hex.decode(new TextEncoder().encode(msg)));
+      const uncompressedPublicKey = ethers.utils.computePublicKey(
+        ethers.utils.recoverPublicKey(hash, sig),
+        false,
+      ).substring(2);
       const publicKey = ethers.utils.computePublicKey(
         ethers.utils.recoverPublicKey(hash, sig),
         isCompressed || false,
-      );
-      return hex.decode(new TextEncoder().encode(publicKey.substring(2)));
+      ).substring(2);
+
+      // Cache
+      localStorage.setItem(LOCAL_STORAGE_KEY, uncompressedPublicKey);
+
+      return hex.decode(new TextEncoder().encode(publicKey));
     },
     async sign(hash) {
       await window.ethereum.enable();
